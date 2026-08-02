@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./server
+    container_name: pg-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+    container_name: pg-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped 
