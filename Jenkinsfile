@@ -18,29 +18,35 @@ pipeline {
 
         stage('Check Tools') {
             steps {
-                bat 'git --version'
-                bat 'docker --version'
-                bat 'kubectl version --client'
+                bat '''
+                git --version
+                docker version
+                kubectl version --client
+                '''
             }
         }
 
-        stage('Build Backend') {
+        stage('Build Backend Image') {
             steps {
                 dir('server') {
-                    bat "docker build -t %BACKEND_IMAGE% ."
+                    bat '''
+                    docker build -t %BACKEND_IMAGE% .
+                    '''
                 }
             }
         }
 
-        stage('Build Frontend') {
+        stage('Build Frontend Image') {
             steps {
                 dir('client') {
-                    bat "docker build -t %FRONTEND_IMAGE% ."
+                    bat '''
+                    docker build -t %FRONTEND_IMAGE% .
+                    '''
                 }
             }
         }
 
-        stage('Docker Login & Push') {
+        stage('Docker Login') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
@@ -50,10 +56,24 @@ pipeline {
 
                     bat '''
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                    docker push %BACKEND_IMAGE%
-                    docker push %FRONTEND_IMAGE%
                     '''
                 }
+            }
+        }
+
+        stage('Push Backend Image') {
+            steps {
+                bat '''
+                docker push %BACKEND_IMAGE%
+                '''
+            }
+        }
+
+        stage('Push Frontend Image') {
+            steps {
+                bat '''
+                docker push %FRONTEND_IMAGE%
+                '''
             }
         }
 
@@ -70,7 +90,7 @@ pipeline {
             }
         }
 
-        stage('Verify') {
+        stage('Verify Deployment') {
             steps {
                 bat '''
                 kubectl rollout status deployment/backend
@@ -85,14 +105,23 @@ pipeline {
     post {
 
         success {
-            echo "Deployment Successful"
+            echo 'Deployment Successful'
+            bat 'docker logout'
         }
 
         failure {
+            echo 'Pipeline Failed'
+
             bat '''
             kubectl rollout undo deployment/backend
             kubectl rollout undo deployment/frontend
             '''
+
+            bat 'docker logout'
+        }
+
+        always {
+            cleanWs()
         }
     }
-}
+} 
