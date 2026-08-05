@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        FRONTEND_IMAGE = "manasvi080205/smart-pg-frontend:latest"
-        BACKEND_IMAGE  = "manasvi080205/smart-pg-backend:latest"
-
         DOCKER = "C:\\Users\\ASUS\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
         KUBECTL = "C:\\ProgramData\\chocolatey\\bin\\kubectl.exe"
+
+        BACKEND_IMAGE = "manasvi080205/smart-pg-backend:latest"
+        FRONTEND_IMAGE = "manasvi080205/smart-pg-frontend:latest"
     }
 
     stages {
@@ -15,7 +15,7 @@ pipeline {
             steps {
                 git branch: 'main',
                     credentialsId: 'github-creds',
-                    url: 'https://github.com/manasvitiwari-08/Smart-PG-Hostel-Management-System.git' 
+                    url: 'https://github.com/manasvitiwari-08/Smart-PG-Hostel-Management-System.git'
             }
         }
 
@@ -50,19 +50,21 @@ pipeline {
         }
 
         stage('Docker Login') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'dockerhub-creds',
-            usernameVariable: 'DOCKER_USER',
-            passwordVariable: 'DOCKER_PASS'
-        )]) {
-            bat '''
-            @echo off
-            echo %DOCKER_PASS% | "C:\\Users\\ASUS\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" login -u %DOCKER_USER% --password-stdin
-            '''
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    bat '''
+                    @echo off
+                    echo Logging into Docker Hub...
+                    echo %DOCKER_PASS% | "%DOCKER%" login -u %DOCKER_USER% --password-stdin
+                    '''
+                }
+            }
         }
-    }
-} 
 
         stage('Push Backend Image') {
             steps {
@@ -108,12 +110,12 @@ pipeline {
     post {
 
         success {
-            echo "Deployment Successful"
+            echo 'Deployment Successful'
             bat '"%DOCKER%" logout'
         }
 
         failure {
-            echo "Pipeline Failed"
+            echo 'Pipeline Failed'
 
             bat '''
             "%KUBECTL%" rollout undo deployment/backend || exit /b 0
@@ -127,4 +129,4 @@ pipeline {
             cleanWs()
         }
     }
-}
+} 
