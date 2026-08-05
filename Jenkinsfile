@@ -49,22 +49,22 @@ pipeline {
             }
         }
 
-        stage('Docker Login') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
+        stage('Docker Login Test') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'dockerhub-creds',
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+        )]) {
 
-                    bat '''
-                    @echo off
-                    echo Logging into Docker Hub...
-                    echo %DOCKER_PASS% | "%DOCKER%" login -u %DOCKER_USER% --password-stdin
-                    '''
-                }
-            }
+            bat '''
+            @echo off
+            echo Username=%DOCKER_USER%
+            powershell -Command "Write-Host ('Password Length: ' + $env:DOCKER_PASS.Length)"
+            '''
         }
+    }
+}
 
         stage('Push Backend Image') {
             steps {
