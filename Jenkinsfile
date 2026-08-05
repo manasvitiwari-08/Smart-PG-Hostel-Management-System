@@ -2,11 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER = "C:\\Users\\ASUS\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
-        KUBECTL = "C:\\ProgramData\\chocolatey\\bin\\kubectl.exe"
-
-        BACKEND_IMAGE = "manasvi080205/smart-pg-backend:latest"
         FRONTEND_IMAGE = "manasvi080205/smart-pg-frontend:latest"
+        BACKEND_IMAGE  = "manasvi080205/smart-pg-backend:latest"
     }
 
     stages {
@@ -23,8 +20,8 @@ pipeline {
             steps {
                 bat '''
                 git --version
-                "%DOCKER%" version
-                "%KUBECTL%" version --client
+                docker version
+                kubectl version --client
                 '''
             }
         }
@@ -33,7 +30,7 @@ pipeline {
             steps {
                 dir('server') {
                     bat '''
-                    "%DOCKER%" build -t %BACKEND_IMAGE% .
+                    docker build -t %BACKEND_IMAGE% .
                     '''
                 }
             }
@@ -43,32 +40,32 @@ pipeline {
             steps {
                 dir('client') {
                     bat '''
-                    "%DOCKER%" build -t %FRONTEND_IMAGE% .
+                    docker build -t %FRONTEND_IMAGE% .
                     '''
                 }
             }
         }
 
-       stage('Docker Login') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'dockerhub-creds',
-            usernameVariable: 'DOCKER_USER',
-            passwordVariable: 'DOCKER_PASS'
-        )]) {
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
 
-            bat '''
-            @echo off
-            echo %DOCKER_PASS% | "C:\\Users\\ASUS\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" login -u %DOCKER_USER% --password-stdin
-            '''
+                    bat '''
+                    @echo off
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    '''
+                }
+            }
         }
-    }
-} 
 
         stage('Push Backend Image') {
             steps {
                 bat '''
-                "%DOCKER%" push %BACKEND_IMAGE%
+                docker push %BACKEND_IMAGE%
                 '''
             }
         }
@@ -76,7 +73,7 @@ pipeline {
         stage('Push Frontend Image') {
             steps {
                 bat '''
-                "%DOCKER%" push %FRONTEND_IMAGE%
+                docker push %FRONTEND_IMAGE%
                 '''
             }
         }
@@ -84,12 +81,12 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 bat '''
-                "%KUBECTL%" apply -f k8s\\configmap.yaml
-                "%KUBECTL%" apply -f k8s\\secret.yaml
-                "%KUBECTL%" apply -f k8s\\backend-deployment.yaml
-                "%KUBECTL%" apply -f k8s\\backend-service.yaml
-                "%KUBECTL%" apply -f k8s\\frontend-deployment.yaml
-                "%KUBECTL%" apply -f k8s\\frontend-service.yaml
+                kubectl apply -f k8s\\configmap.yaml
+                kubectl apply -f k8s\\secret.yaml
+                kubectl apply -f k8s\\backend-deployment.yaml
+                kubectl apply -f k8s\\backend-service.yaml
+                kubectl apply -f k8s\\frontend-deployment.yaml
+                kubectl apply -f k8s\\frontend-service.yaml
                 '''
             }
         }
@@ -97,10 +94,10 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 bat '''
-                "%KUBECTL%" rollout status deployment/backend
-                "%KUBECTL%" rollout status deployment/frontend
-                "%KUBECTL%" get pods
-                "%KUBECTL%" get svc
+                kubectl rollout status deployment/backend
+                kubectl rollout status deployment/frontend
+                kubectl get pods
+                kubectl get svc
                 '''
             }
         }
@@ -110,18 +107,18 @@ pipeline {
 
         success {
             echo 'Deployment Successful'
-            bat '"%DOCKER%" logout'
+            bat 'docker logout'
         }
 
         failure {
             echo 'Pipeline Failed'
 
             bat '''
-            "%KUBECTL%" rollout undo deployment/backend || exit /b 0
-            "%KUBECTL%" rollout undo deployment/frontend || exit /b 0
+            kubectl rollout undo deployment/backend
+            kubectl rollout undo deployment/frontend
             '''
 
-            bat '"%DOCKER%" logout'
+            bat 'docker logout'
         }
 
         always {
