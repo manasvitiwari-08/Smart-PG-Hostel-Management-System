@@ -46,17 +46,19 @@ pipeline {
             }
         }
 
-        stage('Docker Login Only') {
+       stage('Check Credential') {
     steps {
         withCredentials([usernamePassword(
             credentialsId: 'dockerhub-creds',
             usernameVariable: 'DOCKER_USER',
             passwordVariable: 'DOCKER_PASS'
         )]) {
+
             bat '''
             @echo off
-            docker logout
-            echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+            echo Username=%DOCKER_USER%
+            echo First Character=%DOCKER_PASS:~0,1%
+            echo Length Test=%DOCKER_PASS%
             '''
         }
     }
