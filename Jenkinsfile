@@ -46,23 +46,22 @@ pipeline {
             }
         }
 
-       stage('Check Credential') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'dockerhub-creds',
-            usernameVariable: 'DOCKER_USER',
-            passwordVariable: 'DOCKER_PASS'
-        )]) {
+        stage('Check Credential') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
 
-            bat '''
-            @echo off
-            echo Username=%DOCKER_USER%
-            echo First Character=%DOCKER_PASS:~0,1%
-            echo Length Test=%DOCKER_PASS%
-            '''
+                    bat '''
+                    @echo off
+                    echo Username=%DOCKER_USER%
+                    echo Password First Character=%DOCKER_PASS:~0,1%
+                    '''
+                }
+            }
         }
-    }
-} 
 
         stage('Push Backend Image') {
             steps {
@@ -76,6 +75,38 @@ pipeline {
             steps {
                 bat '''
                 docker push %FRONTEND_IMAGE%
+                '''
+            }
+        }
+
+        stage('Debug Kubernetes') {
+            steps {
+                bat '''
+                echo ================================
+                echo Current User
+                echo ================================
+                whoami
+
+                echo.
+                echo USERPROFILE=%USERPROFILE%
+
+                echo.
+                echo ================================
+                echo Current Context
+                echo ================================
+                kubectl config current-context
+
+                echo.
+                echo ================================
+                echo Cluster Info
+                echo ================================
+                kubectl cluster-info
+
+                echo.
+                echo ================================
+                echo Nodes
+                echo ================================
+                kubectl get nodes
                 '''
             }
         }
@@ -98,8 +129,10 @@ pipeline {
                 bat '''
                 kubectl rollout status deployment/backend
                 kubectl rollout status deployment/frontend
-                kubectl get pods
+
+                kubectl get pods -o wide
                 kubectl get svc
+                kubectl get deployments
                 '''
             }
         }
@@ -116,8 +149,9 @@ pipeline {
             echo 'Pipeline Failed'
 
             bat '''
-            kubectl rollout undo deployment/backend
-            kubectl rollout undo deployment/frontend
+            kubectl get pods
+            kubectl get svc
+            kubectl get deployments
             '''
 
             bat 'docker logout'
